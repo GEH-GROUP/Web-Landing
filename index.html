@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GEH Group | Url Hub</title>
+    <title>GEH Group | Url Library</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * { box-sizing: border-box; }
@@ -33,7 +33,7 @@
                 <span class="text-2xl">🌐</span>
                 <h1 class="text-xl font-bold tracking-wider">GEH Group <span class="font-light text-blue-200">Url Hub</span></h1>
             </div>
-            <button onclick="switchView('login')" class="flex items-center gap-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-blue-600 px-3 py-2 rounded transition">
+            <button onclick="checkAdminAccess()" class="flex items-center gap-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-blue-600 px-3 py-2 rounded transition">
                 ⚙️ Admin
             </button>
         </div>
@@ -56,7 +56,7 @@
                 
                 <div class="w-full md:w-1/3 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden shrink-0">
                     <div class="bg-slate-50 border-b border-slate-200 px-4 py-3 font-bold text-slate-700 flex justify-between items-center">
-                        <span>🏢</span>
+                        <span>🏢 Main Menu</span>
                     </div>
                     <div id="company-list-container" class="flex flex-col max-h-[40vh] md:max-h-[65vh] overflow-y-auto custom-scrollbar">
                         </div>
@@ -124,7 +124,7 @@
 
                     <div>
                         <div class="flex justify-between items-center mb-4">
-                            <label class="block text-lg font-bold text-slate-800">🏢 Corporate Structure (Main Name & Url)</label>
+                            <label class="block text-lg font-bold text-slate-800">🏢 Corporate Structure (Main Menu & Url)</label>
                             <button type="button" onclick="addCompanyCard()" class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-sm py-2 px-4 rounded font-bold transition">
                                 + Add Company
                             </button>
@@ -133,7 +133,10 @@
                     </div>
 
                     <div class="pt-6 mt-8 border-t border-slate-200 flex justify-between items-center sticky bottom-0 bg-white py-4 shadow-[0_-15px_15px_-10px_rgba(0,0,0,0.05)] -mx-6 md:-mx-8 px-6 md:px-8 z-10">
-                        <button type="button" onclick="switchView('front')" class="text-slate-500 hover:text-slate-800 font-medium text-sm md:text-base transition">&larr; Back to Hub</button>
+                        <div class="flex items-center gap-4">
+                            <button type="button" onclick="switchView('front')" class="text-slate-500 hover:text-slate-800 font-medium text-sm md:text-base transition">&larr; Back to Hub</button>
+                            <button type="button" onclick="adminLogout()" class="text-red-400 hover:text-red-600 font-medium text-sm md:text-base transition border-l border-slate-300 pl-4">Logout</button>
+                        </div>
                         <button id="save-btn" type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 md:py-3 px-6 md:px-10 rounded shadow-md transition text-base md:text-lg">
                             Save All Changes
                         </button>
@@ -145,9 +148,7 @@
 
 
     <script>
-        // ==========================================
-        // ✅ 這裡已經換成你最新的 Google Apps Script 網址了！
-        // ==========================================
+        // 綁定 Google Apps Script 網址
         const GOOGLE_API_URL = 'https://script.google.com/macros/s/AKfycbxST6IDkTzD3bjRuNsfuVLBWG-48uQBMASn25w98AcOrVSm5Lyb4yNi6RAa9Fnh7Gu9Fw/exec';
 
         // 管理員密碼
@@ -157,6 +158,30 @@
         // 狀態控制
         let appData = { announcement: "", companies: [] };
         let activeCompanyIndex = null;
+
+        // --- 檢查 15 分鐘登入狀態 ---
+        function checkAdminAccess() {
+            const expireTime = localStorage.getItem('geh_admin_session');
+            const now = new Date().getTime();
+            
+            // 如果 Token 存在且還沒過期 (15分鐘內)
+            if (expireTime && now < parseInt(expireTime)) {
+                // 延長登入時間 15 分鐘
+                localStorage.setItem('geh_admin_session', now + 15 * 60 * 1000);
+                switchView('admin');
+            } else {
+                // 否則清除過期的 Token，並顯示登入畫面
+                localStorage.removeItem('geh_admin_session');
+                switchView('login');
+            }
+        }
+
+        // --- 手動登出 ---
+        function adminLogout() {
+            localStorage.removeItem('geh_admin_session');
+            alert("🔒 Successfully logged out.");
+            switchView('front');
+        }
 
         // --- 從 Google Drive 讀取資料 ---
         async function fetchFromGoogle() {
@@ -205,7 +230,6 @@
             companyContainer.innerHTML = '';
             linksContainer.innerHTML = '';
 
-            // 渲染左側公司列表
             appData.companies.forEach((comp, index) => {
                 const isActive = (activeCompanyIndex === index);
                 
@@ -218,7 +242,6 @@
                 companyContainer.innerHTML += btnHTML;
             });
 
-            // 渲染右側連結面板
             if (activeCompanyIndex !== null && appData.companies[activeCompanyIndex]) {
                 const activeComp = appData.companies[activeCompanyIndex];
                 companyNameLabel.innerHTML = `<span>🔗</span> ${activeComp.name} Links`;
@@ -269,6 +292,11 @@
             e.preventDefault();
             if (document.getElementById('login-username').value === ADMIN_USER && 
                 document.getElementById('login-password').value === ADMIN_PASS) {
+                
+                // 登入成功，記錄 15 分鐘的有效期限
+                const now = new Date().getTime();
+                localStorage.setItem('geh_admin_session', now + 15 * 60 * 1000);
+                
                 switchView('admin');
             } else {
                 alert("❌ Invalid Admin ID or Password!");
@@ -296,7 +324,7 @@
             
             card.innerHTML = `
                 <div class="flex justify-between items-center mb-3 gap-2 border-b border-slate-100 pb-3">
-                    <label class="block text-sm font-bold text-slate-800">Main Name</label>
+                    <label class="block text-sm font-bold text-slate-800">Company Name</label>
                     <button type="button" onclick="this.closest('.company-card').remove()" class="text-slate-400 hover:text-red-500 transition font-bold text-xs md:text-sm bg-slate-50 hover:bg-red-50 px-2 py-1 rounded">✕ Remove</button>
                 </div>
                 <input type="text" class="company-name w-full border border-slate-300 rounded-md p-2.5 mb-5 focus:ring-blue-500 focus:border-blue-500 font-bold outline-none transition" value="${compData.name}" placeholder="e.g. GEH Tech..." required>
@@ -373,9 +401,15 @@
                 });
                 
                 appData = finalData; 
-                if (appData.companies.length > 0) activeCompanyIndex = 0; // 儲存後重置選取第一間公司
+                if (appData.companies.length > 0) activeCompanyIndex = 0; 
+                
+                // 【重要更新】每次點擊儲存，自動將登入有效時間再延長 15 分鐘
+                localStorage.setItem('geh_admin_session', new Date().getTime() + 15 * 60 * 1000);
+                
                 alert("✅ Database successfully updated!");
-                switchView('front');
+                
+                // 移除 switchView('front'); 讓畫面停留在後台，方便繼續修改
+                
             } catch (err) {
                 alert("❌ Failed to save: " + err.message);
             } finally {
